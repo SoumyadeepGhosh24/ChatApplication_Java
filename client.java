@@ -1,0 +1,174 @@
+import java.awt.BorderLayout;
+import java.awt.Font;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
+import java.io.BufferedReader;
+// import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
+// import java.awt.event.KeyListener;
+import javax.swing.BorderFactory;
+// import javax.swing.ImageIcon;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.SwingConstants;
+
+public class client extends JFrame {
+
+    Socket socket;
+    BufferedReader br;
+    PrintWriter out;
+
+    // declare components for GUI
+    private JLabel heading = new JLabel("Client Area");
+    private JTextArea msgarea = new JTextArea();
+    private JTextField msginput = new JTextField();
+    private Font font = new Font("Roboto", Font.PLAIN, 20);
+
+    //class constructor
+    public client(){
+        try {
+            System.out.println("Sending request to server");
+            socket = new Socket("Localhost",7778);
+            System.out.println("Request Accepted");
+             //reading the input from client using BufferedReader
+            br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            // printing the output using PrintWriter
+            out = new PrintWriter(socket.getOutputStream(), true);
+
+            createGUI();
+            handleEvent();
+            startReading();
+            // startWriting();
+        } 
+        catch (Exception e) {
+            // e.printStackTrace();
+        }
+    }
+
+    private void handleEvent() {
+        msginput.addKeyListener(new KeyListener() {
+
+            @Override
+            public void keyTyped(KeyEvent e) {
+                
+            }
+
+            @Override
+            public void keyPressed(KeyEvent e) {
+                
+            }
+
+            @Override
+            public void keyReleased(KeyEvent e) {
+                // System.out.println("Key releases = "+e.getKeyChar());
+                if(e.getKeyCode() == 10){
+                    String conttosend = msginput.getText();
+                    msgarea.append("Me: "+conttosend+"\n");
+                    out.println(conttosend);
+                    out.flush();
+                    msginput.setText("");
+                    msginput.requestFocus();
+                }
+            }
+            
+        });
+    }
+
+    private void createGUI() {
+        //GUI code
+        this.setTitle("Client Message[END]");
+        this.setSize(600,700);
+        this.setLocationRelativeTo(null);
+        this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        this.setVisible(true);
+        
+        heading.setFont(font);
+        msgarea.setFont(font);
+        msginput.setFont(font);
+
+        // heading.setIcon(new ImageIcon("clogo.png"));
+        // heading.setHorizontalTextPosition(SwingConstants.CENTER);
+        // heading.setVerticalTextPosition(SwingConstants.BOTTOM);
+
+        heading.setHorizontalAlignment(SwingConstants.CENTER);
+        heading.setBorder(BorderFactory.createEmptyBorder(20,20,20,20));
+        msgarea.setEditable(false);
+        msginput.setHorizontalAlignment(SwingConstants.RIGHT);
+
+        //frame layout setting
+        this.setLayout(new BorderLayout());
+
+        //adding the components through frame
+        this.add(heading,BorderLayout.NORTH);
+        JScrollPane jScrollPane = new JScrollPane(msgarea);
+        this.add(jScrollPane, BorderLayout.CENTER);
+        this.add(msginput, BorderLayout.SOUTH);
+    }
+
+    public void startReading(){
+        Runnable r1 =()->{
+            System.out.println("reading started...");
+            try {
+                while (true) {
+                    String msg;
+                    msg = br.readLine();
+                    if(msg.equals("exit"))
+                    {
+                        System.out.println("client disconnected");
+                        JOptionPane.showMessageDialog(this, "Server Terminated");
+                        msginput.setEnabled(false);
+                        socket.close();
+                        break;
+                    }
+                    // System.out.println("Client says: "+msg);
+                    msgarea.append("Server :"+ msg+"\n");
+                    // msgarea.setHorizontalAlignment(SwingConstants.LEFT);
+                }
+            } 
+            catch (Exception e) {
+                // e.printStackTrace();
+                System.out.println("Connection closed...");
+
+            }
+        };
+        new Thread(r1).start();
+    }
+    public void startWriting(){
+        Runnable r2=()->{
+            System.out.println("Writing started...");
+            try {
+                while (!socket.isClosed()) {
+                    BufferedReader br1 = new BufferedReader(new InputStreamReader(System.in));
+                    String cont = br1.readLine();
+                    out.println(cont);
+                    out.flush(); 
+                    if(cont.equals("exit"))
+                    {
+                        socket.close();
+                        break;
+                    }                         
+                }
+                System.out.println("Connection closed...");
+
+            } 
+            catch (Exception e) {
+                // e.printStackTrace();
+                System.out.println("Connection closed...");
+
+            }
+            // System.out.println("Connection closed...");
+
+        };
+        new Thread(r2).start();
+    }
+    public static void main(String[] args) {
+        System.out.println("This is client...");
+        new client();
+    }
+}
